@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Script gerador de relação de discos em clusters Oracle
+# Script gerador de relação de discos em ambientes Oracle
 # Desenvolvido por Roger Príncipe
 
 SERVIDORES=`cat lista_servidores`
