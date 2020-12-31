@@ -4,7 +4,7 @@
 # Desenvolvido por Roger Príncipe
 
 SERVIDORES=`cat lista_servidores`
-CTRL_MULTIPATHING="?"
+CTRL_MULTIPATHING='?'
 
 temhdlm=`ssh -q $(echo "$SERVIDORES" | head -n 1) "rpm -q HDLM > /dev/null 2>&1; echo \\$?"`
 tempp=`ssh -q $(echo "$SERVIDORES" | head -n 1) "rpm -q EMCpower.LINUX > /dev/null 2>&1; echo \\$?"`
