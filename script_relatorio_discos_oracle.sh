@@ -28,6 +28,7 @@ clear
 
 SERVIDORES=`cat lista_servidores`
 CTRL_MULTIPATHING="?"
+ARQ_DESPEJO="/tmp/saida_script_devices_oracle_$(date +%s).tmp"
 temhdlm=`ssh -q $(echo "$SERVIDORES" | head -n 1) "rpm -q HDLM > /dev/null 2>&1; echo \\$?"`
 tempp=`ssh -q $(echo "$SERVIDORES" | head -n 1) "rpm -q EMCpower.LINUX > /dev/null 2>&1; echo \\$?"`
 
@@ -96,7 +97,7 @@ function descobrir_device_so(){
 if [ ! -z "$disco_so_temp" ]; then
         echo $disco_so_temp
 else
-        echo "-------"
+        echo "---------"
 fi
 }
 
@@ -121,18 +122,22 @@ else
 fi
 }
 
-echo -ne "LUN ID\tDEVICE ORACLE\t"
+echo -e "Gerando o relatório. Por favor, aguarde..."
+
+(echo -ne "LUN_ID DEVICE_ORACLE "
 for servidor in $SERVIDORES; do
-        echo -ne "$servidor\t"
+        echo -ne "$servidor "
 done
 echo
 for disco in $LISTA_DISCOS; do
         device_particionado=$(descobrir_particao_bool `echo "$SERVIDORES" | head -n 1` $disco)
-        echo -ne "$disco\t$(descobrir_device_bd $disco)\t"
+        echo -ne "$disco $(descobrir_device_bd $disco) "
         for servidor in $SERVIDORES; do
-                echo -ne "`descobrir_device_so $servidor $disco`\t"
+                echo -ne "`descobrir_device_so $servidor $disco` "
         done
         echo
-done
+done) | column -t > $ARQ_DESPEJO
+clear
+cat $ARQ_DESPEJO
 
-rm -f lista_luns.txt lista_servidores
+rm -f lista_luns.txt lista_servidores $ARQ_DESPEJO
