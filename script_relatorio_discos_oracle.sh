@@ -1,16 +1,44 @@
 #!/usr/bin/env bash
 
-# Script gerador de relação de discos em ambientes Oracle
-# Desenvolvido por Roger Príncipe
+# Script gerador de relação de discos em clusters Oracle
+# O objetivo desse script é ser utilizado em um servidor que tem acesso ao(s) servidor(es) de banco de dados Oracle, com relação de confiança
+# Esse script conecta nos servidores e gera o relatório de todos os discos que o banco utiliza, considerando todos os servidores do ambiente, se houver mais de um
+# Desenvolvido por Roger Príncipe (roger@principe.eti.br)
+
+clear
+echo
+echo "######################################################################"
+echo "### SCRIPT GERADOR DE RELATORIO DE DISCOS - BANCOS DE DADOS ORACLE ###"
+echo "######################################################################"
+echo
+echo " 1) Ambiente A (hostnamea/hostnameb);"
+echo " 2) Ambiente B (hostnamec/hostnamed);"
+echo " 3) Ambiente C (hostnamee/hostnamef);"
+echo
+read -p "Digite o código do ambiente: " opc
+
+case $opc in
+"1")    echo -e "hostnamea\nhostnameb" > lista_servidores ;;
+"2")    echo -e "hostnamec\nhostnamed" > lista_servidores ;;
+"3")    echo -e "hostnamee\nhostnamef" > lista_servidores ;;
+*)      echo "Opção inválida"
+        exit ;;
+esac
+clear
 
 SERVIDORES=`cat lista_servidores`
-CTRL_MULTIPATHING='?'
-
+CTRL_MULTIPATHING="?"
 temhdlm=`ssh -q $(echo "$SERVIDORES" | head -n 1) "rpm -q HDLM > /dev/null 2>&1; echo \\$?"`
 tempp=`ssh -q $(echo "$SERVIDORES" | head -n 1) "rpm -q EMCpower.LINUX > /dev/null 2>&1; echo \\$?"`
 
-if [ "$temhdlm" -eq 0 -a "$tempp" -ne 0 ]; then CTRL_MULTIPATHING="HDLM"; fi
-if [ "$temhdlm" -ne 0 -a "$tempp" -eq 0 ]; then CTRL_MULTIPATHING="PP"; fi
+if [ "$temhdlm" -eq 0 -a "$tempp" -ne 0 ]; then
+        CTRL_MULTIPATHING="HDLM"
+fi
+
+if [ "$temhdlm" -ne 0 -a "$tempp" -eq 0 ]; then
+        CTRL_MULTIPATHING="PP"
+fi
+
 if [ "$CTRL_MULTIPATHING" == "?" ]; then
         echo -e "\n====================================================\nProblema na definição do contralador de multipathing.\nContacte o administrador do script e relate o erro.\n============== roger@principe.eti.br ===============\n"
         exit 1
@@ -46,12 +74,18 @@ function descobrir_device_bd(){
 [[ "$CTRL_MULTIPATHING" == "PP" ]] && disco_so_temp=`ssh -q $(echo "$SERVIDORES" | head -n 1) "powermt display dev=all" | grepp $1 | grep 'Pseudo name=' | cut -d '=' -f 2 | cut -d " " -f 1`
 [[ "$CTRL_MULTIPATHING" == "HDLM" ]] && disco_so_temp=`ssh -q $(echo "$SERVIDORES" | head -n 1) "dlnkmgr view -lu" | grep -P sddl[a-z]{2} | grep $1 | awk '{print $2}'`
 mm=`descobrir_mm $(echo "$SERVIDORES" | head -n 1) $disco_so_temp`
-disco_bd=$(ssh -q `echo "$SERVIDORES" | head -n 1` "ls -l $DIRETORIO_DEVICES_BANCO 2> /dev/null" | tr -s " " | sed 's/, /,/g' | grep " $mm " | awk '{print $NF}')
+ssh -q $(echo "$SERVIDORES" | head -n 1) "if [ -d /dev/raw/ ]; then
+        for rawdev in \$(find /dev/raw/ -regextype posix-egrep -regex /dev/raw/raw[0-9]+); do
+                raw -q \$rawdev | sed 's/[:,]//g' | awk '{print \" \"\$(NF-2)\", \"\$NF\" \"\$1}' | sed 's/\/dev\/raw\///'
+        done > /tmp/raw_list.tmp
+fi"
+disco_bd=$(ssh -q `echo "$SERVIDORES" | head -n 1` "(ls -l $DIRETORIO_DEVICES_BANCO 2> /dev/null; cat /tmp/raw_list.tmp 2> /dev/null)" | tr -s " " | sed 's/, /,/g' | grep " $mm " | awk '{print $NF}')
 if [ ! -z "$disco_bd" ]; then
         echo $disco_bd
 else
         echo "---------"
 fi
+rm -f /tmp/raw_list.tmp
 }
 
 function descobrir_device_so(){
@@ -101,4 +135,4 @@ for disco in $LISTA_DISCOS; do
         echo
 done
 
-rm -f lista_luns.txt
+rm -f lista_luns.txt lista_servidores
