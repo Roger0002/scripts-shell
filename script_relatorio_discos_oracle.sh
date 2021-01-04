@@ -50,7 +50,6 @@ DIRETORIO_DEVICES_BANCO="/dev/oracleasm/disks"
 function grepp(){
 # Uso: Exatamente como o grep -p do AIX, mas se aplica apenas à pesquisa de devices na saida do comando "powermt display dev=all", do EMC PowerPath
 awk --re-interval /\(WWN=\|e\ ID=\)$1[[:cntrl:]\ ]/ RS="\n\n" ORS="\n\n"
-#awk /$1/ RS="\n\n" ORS="\n\n"
 }
 
 # Construindo a lista de LUNs
